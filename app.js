@@ -94,7 +94,14 @@ async function showApp(user) {
   $('authView').hidden = true;
   $('appView').hidden = false;
   $('userEmail').textContent = user?.email || '';
-  await loadAlbums();
+
+  try {
+    await loadAlbums();
+  } catch (err) {
+    console.error(err);
+    $('empty').textContent = 'Sessão iniciada, mas não foi possível carregar os álbuns. Verifica a ligação ao Supabase.';
+    $('empty').style.display = 'block';
+  }
 }
 
 async function loadAlbums() {
@@ -104,8 +111,8 @@ async function loadAlbums() {
     .order('created_at', { ascending: false });
 
   if (error) {
-    alert('Erro a carregar álbuns: ' + error.message);
-    return;
+    console.error('Erro a carregar álbuns:', error);
+    throw error;
   }
 
   albums = data || [];
@@ -193,12 +200,13 @@ async function updateAdminButton() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
+  if (error) console.warn('Perfil não carregado:', error.message);
   $('newAlbumBtn').style.display = profile?.role === 'admin' ? '' : 'none';
 }
 
@@ -251,6 +259,16 @@ function escapeHtml(s) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   }[c]));
 }
+
+// Restore an existing session when the page is reopened.
+(async function bootstrap() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) await showApp(session.user);
+  } catch (err) {
+    console.error('Erro ao restaurar sessão:', err);
+  }
+})();
 
 $('signInBtn').addEventListener('click', signIn);
 $('signUpBtn').addEventListener('click', signUp);

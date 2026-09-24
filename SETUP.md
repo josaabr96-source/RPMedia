@@ -41,3 +41,7 @@ O projeto é HTML/CSS/JS e pode ser publicado num serviço de hosting estático.
 
 ## Próxima melhoria recomendada
 Adicionar permissões por álbum, thumbnails, upload resumível para vídeos grandes, seleção múltipla para download e uma área de administração completa.
+
+
+## V4
+A versão V4 mostra a área principal imediatamente após o login e trata falhas no carregamento dos álbuns sem bloquear o ecrã de autenticação.
