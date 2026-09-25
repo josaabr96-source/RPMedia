@@ -1,43 +1,13 @@
 <!doctype html>
 <html lang="pt-PT">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RPMedia</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RPMedia</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="authView" class="screen">
-  <div class="auth-card">
-    <div class="brand"><span>RP</span>Media</div>
-    <p class="eyebrow">RPM BROTHERS</p>
-    <h1>Media privada.</h1>
-    <p class="muted">Entra para veres, enviares e descarregares as tuas fotos e vídeos.</p>
-    <input id="email" type="email" autocomplete="email" placeholder="Email">
-    <input id="password" type="password" autocomplete="current-password" placeholder="Password">
-    <button id="signInBtn" class="primary" type="button">Entrar</button>
-    <button id="signUpBtn" class="ghost full" type="button">Criar conta</button>
-    <p id="authMsg" class="message"></p>
-  </div>
-</div>
-
-<div id="appView" hidden>
-<header class="topbar">
-  <div class="brand"><span>RP</span>Media</div>
-  <div class="actions"><span id="userEmail" class="user"></span><button id="signOutBtn" class="ghost" type="button">Sair</button></div>
-</header>
-<main>
-<section class="hero small">
-  <div><p class="eyebrow">RPM BROTHERS MEDIA</p><h1>A tua biblioteca.</h1><p class="muted">Fotos e vídeos acessíveis em qualquer dispositivo.</p></div>
-  <button id="uploadBtn" class="primary" type="button">＋ Upload</button>
-  <input id="fileInput" type="file" accept="image/*,video/*" multiple hidden>
-</section>
+<div id="authView" class="screen"><div class="auth-card"><div class="brand"><span>RP</span>Media</div><p class="eyebrow">RPM BROTHERS</p><h1>Media privada.</h1><p class="muted">Entra para veres, enviares e descarregares as tuas fotos e vídeos.</p><input id="email" type="email" autocomplete="email" placeholder="Email"><input id="password" type="password" autocomplete="current-password" placeholder="Password"><button id="signInBtn" class="primary" type="button">Entrar</button><button id="signUpBtn" class="ghost full" type="button">Criar conta</button><p id="authMsg" class="message"></p></div></div>
+<div id="appView" hidden><header class="topbar"><div class="brand"><span>RP</span>Media</div><div class="actions"><span id="userEmail" class="user"></span><button id="signOutBtn" class="ghost" type="button">Sair</button></div></header>
+<main><section class="hero small"><div><p class="eyebrow">RPM BROTHERS MEDIA</p><h1>A tua biblioteca.</h1><p class="muted">Organiza fotos e vídeos por álbuns e acede-lhes em qualquer dispositivo.</p></div><button id="uploadBtn" class="primary" type="button">＋ Upload</button><input id="fileInput" type="file" accept="image/*,video/*" multiple hidden></section>
 <section class="stats"><div><b id="photoCount">0</b><span>Fotos</span></div><div><b id="videoCount">0</b><span>Vídeos</span></div><div><b id="storageCount">0</b><span>Ficheiros</span></div></section>
-<section class="toolbar"><div><label>Álbum</label><select id="albumSelect"></select></div><button id="newAlbumBtn" class="ghost" type="button">＋ Novo álbum</button></section>
-<div id="progress" class="progress" hidden></div>
-<section id="gallery" class="gallery"></section><div id="empty" class="empty">Ainda não existem ficheiros neste álbum.</div>
-</main><footer>RPMedia · RPM Brothers</footer>
-</div>
-<script type="module" src="app.js"></script>
-</body>
-</html>
+<section class="toolbar"><div><label>Álbum</label><select id="albumSelect"></select></div><div class="album-actions"><button id="newAlbumBtn" class="ghost" type="button">＋ Novo álbum</button><button id="deleteAlbumBtn" class="danger" type="button">🗑 Apagar álbum</button></div></section>
+<div id="progress" class="progress" hidden></div><section id="gallery" class="gallery"></section><div id="empty" class="empty">Ainda não existem ficheiros neste álbum.</div></main><footer>RPMedia · RPM Brothers</footer></div>
+<script type="module" src="app.js"></script></body></html>

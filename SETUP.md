@@ -1,47 +1,17 @@
-# RPMedia V2 — instalação
+# RPMedia V5
 
-Esta versão usa Supabase para Auth + Postgres + Storage privado.
+## Novidades
+- 🗑️ Admin pode apagar uma foto/vídeo individual.
+- 🗑️ Admin pode apagar um álbum e os ficheiros que estão dentro dele.
+- 📁 Admin pode mover ficheiros existentes para outro álbum.
+- 📤 O upload continua a ser feito para o álbum selecionado.
+- 🔐 Apagar/mover fica protegido por RLS no Supabase e não apenas pelo botão da página.
 
-## 1. Criar o projeto
-1. Cria um projeto em https://supabase.com/
-2. Abre SQL Editor.
-3. Cola e executa `supabase/schema.sql`.
-4. Em Authentication > URL Configuration, adiciona o endereço onde vais publicar o site.
+## Atualização do Supabase
+1. Abrir o projeto RPMedia no Supabase.
+2. Ir a **SQL Editor**.
+3. Executar o conteúdo de `supabase/migration_delete_organize.sql` uma vez.
+4. Não é necessário apagar as tabelas nem os ficheiros existentes.
 
-## 2. Criar a conta de administrador
-1. Abre o RPMedia.
-2. Cria a tua conta.
-3. No SQL Editor executa:
-   update public.profiles set role='admin' where id=(select id from auth.users where email='O_TEU_EMAIL');
-
-## 3. Ligar o frontend
-Em `app.js`, substitui:
-COLOCA_AQUI_A_SUPABASE_URL
-COLOCA_AQUI_A_SUPABASE_PUBLISHABLE_KEY
-
-Podes encontrar os dados em Project Settings > API.
-
-NUNCA coloques a service_role/secret key no `app.js`. Apenas a publishable key é apropriada para o frontend, protegida pelas políticas RLS.
-
-## 4. Publicar
-O projeto é HTML/CSS/JS e pode ser publicado num serviço de hosting estático. Depois basta abrir o endereço no telemóvel.
-
-## O que a V2 tem
-- Login por email/password
-- Criação de contas
-- Sessão persistente
-- Perfis member/admin
-- Álbuns
-- Upload real para Storage privado
-- Metadados em Postgres
-- Galeria de fotos
-- Reprodução de vídeos
-- Links de download temporários
-- RLS para limitar o acesso
-
-## Próxima melhoria recomendada
-Adicionar permissões por álbum, thumbnails, upload resumível para vídeos grandes, seleção múltipla para download e uma área de administração completa.
-
-
-## V4
-A versão V4 mostra a área principal imediatamente após o login e trata falhas no carregamento dos álbuns sem bloquear o ecrã de autenticação.
+## Netlify / GitHub
+Substituir os ficheiros `index.html`, `app.js` e `style.css` do repositório pelos desta versão. O Supabase continua com o mesmo URL e publishable key.
