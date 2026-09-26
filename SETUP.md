@@ -1,54 +1,41 @@
-# RPMedia V6 — instalação e atualização
+# RPMedia V6 — instalação
 
-Esta V6 parte da V5 e acrescenta:
-- visualizador de fotos/vídeos em ecrã grande;
-- anterior/seguinte, ESC e clique fora para fechar;
-- identificação numérica dos álbuns;
-- numeração dos ficheiros dentro de cada álbum;
-- upload, download, criação/eliminação/movimentação de conteúdos apenas para admins na interface e nas policies novas;
-- bucket privado separado `media_previews` como base para as versões protegidas.
+## 1. Não apagues a V5
+A V5 continua a ser o backup funcional.
 
-## Passo 1 — Backup
-Não apagar a V5. Guardar o ZIP atual como cópia de segurança.
+## 2. Supabase
+No SQL Editor, executa `supabase/migration_v6.sql` UMA vez.
 
-## Passo 2 — Supabase
-Abrir Supabase → SQL Editor → executar `supabase/migration_v6.sql` uma vez.
+A migração acrescenta:
+- numeração única de álbuns e ficheiros;
+- perfil com nome/bio;
+- carros, feed, gostos, eventos, produtos e encomendas;
+- proteção de Storage para que membros não tenham acesso a originais;
+- campos para original, preview protegido e estado de processamento.
 
-## Passo 3 — Confirmar admins
-As contas existentes mantêm o papel que já tinham. Novas contas entram como `member`.
+## 3. Netlify/GitHub
+Substitui os ficheiros da V5 pelos ficheiros desta pasta e faz commit/push. O Netlify deverá publicar automaticamente.
 
-Para promover uma conta a admin, usar no SQL Editor:
-```sql
-update public.profiles
-set role='admin'
-where id=(select id from auth.users where email='EMAIL_AQUI');
-```
+## 4. Regra de segurança
+O site usa a publishable key do Supabase. Nunca coloques uma `service_role`/secret key no `app.js`.
 
-## Passo 4 — GitHub
-Substituir os ficheiros do repositório pelos ficheiros desta V6 e fazer commit/push.
+## 5. Sistema de matrículas
+A V6 está preparada para o pipeline:
+`original privado -> processamento -> preview desfocada -> privacy_status=ready`.
 
-## Passo 5 — Netlify
-O Netlify deve detetar o push e fazer o deploy. Abrir o endereço do RPMedia e testar login.
+A deteção/blur automático de matrículas em fotos e, sobretudo, em vídeo NÃO é implementada com segurança apenas em HTML/JS. Para a ativar de verdade é necessário um worker/server-side com um modelo/API de deteção de matrículas e processamento de vídeo. Não coloques uma chave privada de um serviço de IA no frontend.
 
-## Passo 6 — Teste funcional
-1. Entrar como admin.
-2. Criar um álbum.
-3. Confirmar que aparece `#1`, `#2`, etc.
-4. Fazer upload de uma foto e de um vídeo.
-5. Confirmar a numeração `#1`, `#2` dentro do álbum.
-6. Clicar numa foto: deve abrir o visualizador grande.
-7. Testar anterior/seguinte, ESC e fechar.
-8. Testar o vídeo no visualizador.
-9. Entrar com uma conta membro: não deve aparecer Upload nem Download.
+Até existir o worker, os ficheiros ficam como `pending` e membros não recebem o original. Administradores conseguem ver o original.
 
-## Importante — proteção de matrículas
-A V6 prepara a segurança e o bucket `media_previews`, mas **não finge que o blur por IA de fotos e vídeos já está implementado**. A deteção automática de matrículas, sobretudo em vídeo, exige processamento server-side/worker e criação da versão protegida antes de a entregar aos membros.
+## 6. Teste depois do deploy
+1. Login admin.
+2. Criar álbum e confirmar número `#1`.
+3. Criar segundo álbum e confirmar `#2`.
+4. Upload de foto/vídeo.
+5. Abrir visualizador grande, anterior/seguinte e ESC.
+6. Confirmar que o admin vê o original.
+7. Entrar com um membro: o membro não deve receber URL do original; verá “A aguardar pré-visualização protegida” enquanto o worker não gerar a preview.
+8. Testar Feed, Carros, Eventos, Loja e Perfil.
 
-A arquitetura prevista é:
-- original → armazenamento privado, admin-only;
-- processamento → deteção de matrícula + blur;
-- preview protegido → `media_previews`, acessível aos membros;
-- membro → nunca recebe URL do original;
-- admin → poderá alternar para o original através de URL assinada.
-
-Não colocar nenhuma `service_role`/secret key no frontend.
+## 7. Ativar IA de matrículas
+Quando escolhermos o fornecedor de deteção, o worker deve ficar no servidor (por exemplo, Supabase Edge Function + serviço de processamento). As credenciais ficam em secrets do servidor, nunca no `app.js`.
