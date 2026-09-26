@@ -39,3 +39,7 @@ Até existir o worker, os ficheiros ficam como `pending` e membros não recebem 
 
 ## 7. Ativar IA de matrículas
 Quando escolhermos o fornecedor de deteção, o worker deve ficar no servidor (por exemplo, Supabase Edge Function + serviço de processamento). As credenciais ficam em secrets do servidor, nunca no `app.js`.
+
+
+## V6.1
+Depois de `migration_v6.sql`, executar uma vez `supabase/migration_v6_1.sql`. Esta versão adiciona ordenação da galeria, navegação do visualizador respeitando filtros/pesquisa e garante nova numeração quando um ficheiro é movido para outro álbum.
