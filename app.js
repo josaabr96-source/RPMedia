@@ -326,7 +326,39 @@ async function uploadFiles(e){
 function openLightbox(m){const i=visibleMedia.findIndex(x=>x.id===m.id);lightIndex=Math.max(0,i);renderLightbox()}
 async function renderLightbox(){const m=currentMedia[lightIndex];if(!m)return;$('lightbox').hidden=false;$('lbMedia').innerHTML='';const url=await getViewUrl(m,isAdmin&&!previewUserMode);if(!url){$('lbMedia').innerHTML='<div class="empty">Esta pré-visualização protegida ainda não foi processada.</div>'}else{const el=document.createElement(m.mime_type.startsWith('image/')?'img':'video');el.src=url;if(el.tagName==='VIDEO'){el.controls=true;el.autoplay=true} $('lbMedia').appendChild(el)}const album=albums.find(a=>a.id===currentAlbum);$('lbCaption').textContent=`ÁLBUM #${album?.album_number||''} · ${m.mime_type.startsWith('image/')?'FOTO':'VÍDEO'} #${m.media_number} · ${m.file_name}`}
 function closeLightbox(){$('lightbox').hidden=true;$('lbMedia').innerHTML=''}function prev(){if(!visibleMedia.length)return;lightIndex=(lightIndex-1+visibleMedia.length)%visibleMedia.length;renderLightbox()}function next(){if(!visibleMedia.length)return;lightIndex=(lightIndex+1)%visibleMedia.length;renderLightbox()}
-async function loadFeed(){const{data,error}=await supabase.from('posts').select('*,profiles(display_name)').order('created_at',{ascending:false}).limit(50);if(error)return console.warn(error);$('feedList').innerHTML=(data||[]).map(p=>`<article class="post"><div class="post-head"><b>${esc(p.profiles?.display_name||'Membro RPM')}</b><span>${new Date(p.created_at).toLocaleString('pt-PT')}</span></div><h3>${esc(p.title||'Publicação RPM')}</h3><p>${esc(p.body||'')}</p><div class="post-actions"><button data-like="${p.id}">♡ Gosto</button>${isAdmin?`<button data-delpost="${p.id}">🗑</button>`:''}</div></article>`).join('')||'<div class="empty">Ainda não existem publicações.</div>';document.querySelectorAll('[data-like]').forEach(b=>b.onclick=()=>likePost(b.dataset.like));document.querySelectorAll('[data-delpost]').forEach(b=>b.onclick=()=>deletePost(b.dataset.delpost))}
+async function loadFeed(){
+  const{data,error}=await supabase
+    .from('posts')
+    .select('*')
+    .order('created_at',{ascending:false})
+    .limit(50);
+
+  if(error)return console.warn(error);
+
+  $('feedList').innerHTML=(data||[])
+    .map(p=>`
+      <article class="post">
+        <div class="post-head">
+          <b>Membro RPM</b>
+          <span>${new Date(p.created_at).toLocaleString('pt-PT')}</span>
+        </div>
+        <h3>${esc(p.title||'Publicação RPM')}</h3>
+        <p>${esc(p.body||'')}</p>
+        <div class="post-actions">
+          <button data-like="${p.id}">♡ Gosto</button>
+          ${isAdmin?`<button data-delpost="${p.id}">🗑</button>`:''}
+        </div>
+      </article>
+    `)
+    .join('')
+    ||'<div class="empty">Ainda não existem publicações.</div>';
+
+  document.querySelectorAll('[data-like]')
+    .forEach(b=>b.onclick=()=>likePost(b.dataset.like));
+
+  document.querySelectorAll('[data-delpost]')
+    .forEach(b=>b.onclick=()=>deletePost(b.dataset.delpost));
+}
 async function createPost(){openForm('Nova publicação','<label>Título</label><input id="fTitle"><label>Texto</label><textarea id="fBody"></textarea><button class="primary" id="fSave">Publicar</button>');$('fSave').onclick=async()=>{const{error}=await supabase.from('posts').insert({title:$('fTitle').value.trim(),body:$('fBody').value.trim(),user_id:user.id});if(error)return alert(error.message);closeModal();loadFeed()}}
 async function likePost(id){const{error}=await supabase.from('post_likes').upsert({post_id:id,user_id:user.id},{onConflict:'post_id,user_id'});if(error)alert(error.message)}async function deletePost(id){if(!isAdmin||!confirm('Apagar publicação?'))return;await supabase.from('posts').delete().eq('id',id);loadFeed()}
 async function loadCars(){const{data,error}=await supabase.from('cars').select('*,profiles(display_name)').order('created_at',{ascending:false});if(error)return console.warn(error);$('carsGrid').innerHTML=(data||[]).map(c=>`<article class="feature-card"><h3>${esc(c.make)} ${esc(c.model)}</h3><p>${esc(c.year||'')} · ${esc(c.engine||'')}</p><p>${esc(c.description||'')}</p><small class="muted">${esc(c.profiles?.display_name||'Membro')}</small></article>`).join('')||'<div class="empty">Ainda não existem carros.</div>'}
