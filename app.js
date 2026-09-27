@@ -169,7 +169,7 @@ async function addMediaCard(m){
     media.controls=true;
   }
 
-  const url=await getViewUrl(m,isAdmin);
+const url=await getViewUrl(m,isAdmin&&!previewUserMode);
 
   if(url){
     media.src=url;
