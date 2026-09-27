@@ -171,6 +171,13 @@ async function addMediaCard(m){
 
 const url=await getViewUrl(m,isAdmin&&!previewUserMode);
 
+console.log('RPMEDIA PREVIEW:', {
+  previewUserMode,
+  isAdmin,
+  original_path: m.original_path,
+  preview_path: m.preview_path,
+  url
+});
   if(url){
     media.src=url;
   }else{
