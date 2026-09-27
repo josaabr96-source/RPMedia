@@ -16,7 +16,26 @@ async function createAlbum(){if(!isAdmin)return;const name=prompt('Nome do álbu
 async function deleteAlbum(){if(!isAdmin||!currentAlbum)return;const a=albums.find(x=>x.id===currentAlbum);if(!a||!confirm(`Apagar o álbum #${a.album_number} “${a.name}” e os ficheiros?`))return;const{data:ms}=await supabase.from('media').select('original_path,preview_path').eq('album_id',currentAlbum);const paths=(ms||[]).flatMap(m=>[m.original_path,m.preview_path]).filter(Boolean);for(let i=0;i<paths.length;i+=100)await supabase.storage.from('media').remove(paths.slice(i,i+100));const{error}=await supabase.from('albums').delete().eq('id',currentAlbum);if(error)alert(error.message);currentAlbum=null;await loadAlbums()}
 async function loadMedia(){if(!currentAlbum)return;let q=supabase.from('media').select('*').eq('album_id',currentAlbum).order('media_number',{ascending:true});const{data,error}=await q;if(error)return alert(error.message);currentMedia=data||[];renderGallery()}
 function renderGallery(){const filter=$('mediaFilter').value,search=$('mediaSearch').value.toLowerCase().trim(),sort=$('mediaSort').value;let photos=0,videos=0;currentMedia.forEach(m=>m.mime_type.startsWith('image/')?photos++:videos++);$('photoCount').textContent=photos;$('videoCount').textContent=videos;$('storageCount').textContent=currentMedia.length;const album=albums.find(a=>a.id===currentAlbum);$('albumInfo').textContent=album?`Álbum #${album.album_number} · ${album.name} · ${currentMedia.length} ficheiro(s)`:'';$('gallery').innerHTML='';visibleMedia=currentMedia.filter(m=>(filter==='all'||(filter==='image'?m.mime_type.startsWith('image/'):m.mime_type.startsWith('video/')))&&(!search||(`${m.media_number} ${m.file_name}`).toLowerCase().includes(search)));visibleMedia.sort((a,b)=>{if(sort==='number_desc')return (b.media_number||0)-(a.media_number||0);if(sort==='name_asc')return String(a.file_name||'').localeCompare(String(b.file_name||''),'pt-PT');if(sort==='name_desc')return String(b.file_name||'').localeCompare(String(a.file_name||''),'pt-PT');if(sort==='date_desc')return new Date(b.created_at)-new Date(a.created_at);if(sort==='date_asc')return new Date(a.created_at)-new Date(b.created_at);return (a.media_number||0)-(b.media_number||0)});visibleMedia.forEach(m=>addMediaCard(m));$('empty').style.display=visibleMedia.length?'none':'block'}
-async function getViewUrl(m,original=false){const path=original&&m.original_path?m.original_path:m.preview_path;if(!path)return null;const{data,error}=await supabase.storage.from('media').createSignedUrl(path,3600);return error?null:data.signedUrl}
+async function getViewUrl(m,original=false){
+  const path=original&&m.original_path
+    ?m.original_path
+    :m.preview_path;
+
+  if(!path)return null;
+
+  const{data,error}=await supabase
+    .storage
+    .from('media')
+    .createSignedUrl(path,3600);
+
+  if(error){
+    console.error('Erro ao criar Signed URL:',error);
+    console.error('Caminho:',path);
+    return null;
+  }
+
+  return data?.signedUrl||null;
+}
 async function processPhoto(mediaId, silent=false){
   if(!isAdmin)return false;
 
