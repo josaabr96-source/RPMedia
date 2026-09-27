@@ -18,32 +18,122 @@ async function loadMedia(){if(!currentAlbum)return;let q=supabase.from('media').
 function renderGallery(){const filter=$('mediaFilter').value,search=$('mediaSearch').value.toLowerCase().trim(),sort=$('mediaSort').value;let photos=0,videos=0;currentMedia.forEach(m=>m.mime_type.startsWith('image/')?photos++:videos++);$('photoCount').textContent=photos;$('videoCount').textContent=videos;$('storageCount').textContent=currentMedia.length;const album=albums.find(a=>a.id===currentAlbum);$('albumInfo').textContent=album?`Álbum #${album.album_number} · ${album.name} · ${currentMedia.length} ficheiro(s)`:'';$('gallery').innerHTML='';visibleMedia=currentMedia.filter(m=>(filter==='all'||(filter==='image'?m.mime_type.startsWith('image/'):m.mime_type.startsWith('video/')))&&(!search||(`${m.media_number} ${m.file_name}`).toLowerCase().includes(search)));visibleMedia.sort((a,b)=>{if(sort==='number_desc')return (b.media_number||0)-(a.media_number||0);if(sort==='name_asc')return String(a.file_name||'').localeCompare(String(b.file_name||''),'pt-PT');if(sort==='name_desc')return String(b.file_name||'').localeCompare(String(a.file_name||''),'pt-PT');if(sort==='date_desc')return new Date(b.created_at)-new Date(a.created_at);if(sort==='date_asc')return new Date(a.created_at)-new Date(b.created_at);return (a.media_number||0)-(b.media_number||0)});visibleMedia.forEach(m=>addMediaCard(m));$('empty').style.display=visibleMedia.length?'none':'block'}
 async function getViewUrl(m,original=false){const path=original&&m.original_path?m.original_path:m.preview_path;if(!path)return null;const{data,error}=await supabase.storage.from('media').createSignedUrl(path,3600);return error?null:data.signedUrl}
 async function processPhoto(mediaId, silent=false){
-  if(!isAdmin)return;
-  const {data,error}=await supabase.functions.invoke('process-photo',{body:{media_id:mediaId}});
-  if(error){if(!silent)alert('Erro ao iniciar a IA: '+error.message);return false}
-  if(data?.error){if(!silent)alert('Erro IA: '+data.error);return false}
-  return true;
-}
-async function addMediaCard(m){
-  const card=document.createElement('article');card.className='card';
-  const media=document.createElement(m.mime_type.startsWith('image/')?'img':'video');media.className='media';
-  if(media.tagName==='VIDEO')media.controls=true;
-  const url=await getViewUrl(m,isAdmin);
-  if(url)media.src=url;else{media.alt='Pré-visualização protegida ainda não disponível';media.style.opacity='.3'}
-  media.addEventListener('click',()=>openLightbox(m));
-  const meta=document.createElement('div');meta.className='meta';
-  const statusLabel=m.privacy_status==='ready'?'Protegido ✓':m.privacy_status==='processing'?'A processar…':m.privacy_status==='failed'?'Erro no processamento':m.mime_type.startsWith('video/')?'Proteção de vídeo: V6.3':'A aguardar IA';
-  meta.innerHTML=`<div class="number">#${m.media_number}</div><div class="name" title="${esc(m.file_name)}">${esc(m.file_name)}</div><div class="privacy-status ${m.privacy_status==='ready'?'ok':m.privacy_status==='failed'?'bad':''}">${statusLabel}</div>`;
-  const actions=document.createElement('div');actions.className='media-actions';
-  if(isAdmin&&m.original_path){const dl=document.createElement('a');dl.className='download';dl.href=url||'#';dl.download=m.file_name;dl.textContent='↓ Original';actions.appendChild(dl)}
-  if(isAdmin&&m.mime_type.startsWith('image/')&&m.privacy_status!=='ready'){
-    const ai=document.createElement('button');ai.className='ghost';ai.textContent=m.privacy_status==='failed'?'↻ Reprocessar':'🤖 Processar IA';ai.onclick=async()=>{ai.disabled=true;ai.textContent='A processar…';await processPhoto(m.id);await loadMedia()};actions.appendChild(ai);
+  if(!isAdmin)return false;
+
+  try{
+    const { data: media, error } = await supabase
+      .from('media')
+      .select('*')
+      .eq('id', mediaId)
+      .single();
+
+    if(error || !media){
+      throw new Error('Ficheiro não encontrado.');
+    }
+
+    if(!media.mime_type?.startsWith('image/')){
+      throw new Error('Este ficheiro não é uma fotografia.');
+    }
+
+    if(!media.original_path){
+      throw new Error('A fotografia não tem original_path.');
+    }
+
+    const { data: file, error: downloadError } =
+      await supabase.storage
+        .from('media')
+        .download(media.original_path);
+
+    if(downloadError || !file){
+      throw new Error('Não foi possível descarregar a fotografia original.');
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+
+    let binary = '';
+    const bytes = new Uint8Array(arrayBuffer);
+
+    const chunkSize = 8192;
+
+    for(let i = 0; i < bytes.length; i += chunkSize){
+      binary += String.fromCharCode(
+        ...bytes.subarray(i, i + chunkSize)
+      );
+    }
+
+    const imageBase64 = btoa(binary);
+
+    const response = await fetch(
+      'http://127.0.0.1:8765/process',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          filename: media.file_name || 'image.jpg',
+          image: imageBase64
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if(!response.ok || !result?.ok){
+      throw new Error(
+        result?.error || `Worker respondeu ${response.status}.`
+      );
+    }
+
+    if(!result.storage?.path){
+      throw new Error(
+        'O Worker não devolveu o caminho da imagem protegida.'
+      );
+    }
+
+    const previewPath = result.storage.path;
+
+    const { error: updateError } =
+      await supabase
+        .from('media')
+        .update({
+          preview_path: previewPath,
+          privacy_status: 'ready',
+          processed_at: new Date().toISOString(),
+          processing_error: null,
+          blur_provider: 'local-worker'
+        })
+        .eq('id', mediaId);
+
+    if(updateError){
+      throw new Error(
+        'A imagem foi processada, mas não foi possível atualizar o registo: ' +
+        updateError.message
+      );
+    }
+
+    return true;
+
+  }catch(e){
+
+    const message =
+      e instanceof Error ? e.message : String(e);
+
+    await supabase
+      .from('media')
+      .update({
+        privacy_status: 'failed',
+        processing_error: message,
+        blur_provider: 'local-worker'
+      })
+      .eq('id', mediaId);
+
+    if(!silent){
+      alert('Erro ao processar a fotografia: ' + message);
+    }
+
+    return false;
   }
-  if(isAdmin){
-    const move=document.createElement('select');move.className='move-select';move.innerHTML='<option value="">Mover para…</option>'+albums.filter(a=>a.id!==m.album_id).map(a=>`<option value="${a.id}">#${a.album_number} · ${esc(a.name)}</option>`).join('');move.onchange=()=>moveMedia(m.id,move.value);actions.appendChild(move);
-    const del=document.createElement('button');del.className='danger';del.textContent='🗑 Apagar';del.onclick=()=>deleteMedia(m);actions.appendChild(del)
-  }else if(!m.preview_path){const s=document.createElement('span');s.className='muted';s.textContent=m.mime_type.startsWith('video/')?'Vídeo protegido — processamento na V6.3':'A aguardar pré-visualização protegida';actions.appendChild(s)}
-  meta.appendChild(actions);card.append(media,meta);$('gallery').appendChild(card)
 }
 
 async function moveMedia(id,albumId){if(!isAdmin||!albumId)return;const{error}=await supabase.from('media').update({album_id:albumId}).eq('id',id);if(error)alert(error.message);await loadMedia()}
