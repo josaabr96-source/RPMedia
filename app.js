@@ -154,7 +154,149 @@ async function processPhoto(mediaId, silent=false){
     return false;
   }
 }
+async function addMediaCard(m){
+  const card=document.createElement('article');
+  card.className='card';
 
+  const media=document.createElement(
+    m.mime_type.startsWith('image/')?'img':'video'
+  );
+
+  media.className='media';
+
+  if(media.tagName==='VIDEO'){
+    media.controls=true;
+  }
+
+  const url=await getViewUrl(m,isAdmin);
+
+  if(url){
+    media.src=url;
+  }else{
+    media.alt='Pré-visualização protegida ainda não disponível';
+    media.style.opacity='.3';
+  }
+
+  media.addEventListener('click',()=>openLightbox(m));
+
+  const meta=document.createElement('div');
+  meta.className='meta';
+
+  const statusLabel=
+    m.privacy_status==='ready'
+      ?'Protegido ✓'
+      :m.privacy_status==='processing'
+        ?'A processar…'
+        :m.privacy_status==='failed'
+          ?'Erro no processamento'
+          :m.mime_type.startsWith('video/')
+            ?'Proteção de vídeo: V6.3'
+            :'A aguardar IA';
+
+  meta.innerHTML=`
+    <div class="number">#${m.media_number}</div>
+    <div class="name" title="${esc(m.file_name)}">
+      ${esc(m.file_name)}
+    </div>
+    <div class="privacy-status ${
+      m.privacy_status==='ready'
+        ?'ok'
+        :m.privacy_status==='failed'
+          ?'bad'
+          :''
+    }">
+      ${statusLabel}
+    </div>
+  `;
+
+  const actions=document.createElement('div');
+  actions.className='media-actions';
+
+  if(isAdmin&&m.original_path){
+    const dl=document.createElement('a');
+    dl.className='download';
+    dl.href=url||'#';
+    dl.download=m.file_name;
+    dl.textContent='↓ Original';
+    actions.appendChild(dl);
+  }
+
+  if(
+    isAdmin &&
+    m.mime_type.startsWith('image/') &&
+    m.privacy_status!=='ready'
+  ){
+    const ai=document.createElement('button');
+
+    ai.className='ghost';
+
+    ai.textContent=
+      m.privacy_status==='failed'
+        ?'↻ Reprocessar'
+        :'🤖 Processar IA';
+
+    ai.onclick=async()=>{
+      ai.disabled=true;
+      ai.textContent='A processar…';
+
+      await processPhoto(m.id);
+
+      await loadMedia();
+    };
+
+    actions.appendChild(ai);
+  }
+
+  if(isAdmin){
+
+    const move=document.createElement('select');
+
+    move.className='move-select';
+
+    move.innerHTML=
+      '<option value="">Mover para…</option>'+
+      albums
+        .filter(a=>a.id!==m.album_id)
+        .map(a=>
+          `<option value="${a.id}">
+            #${a.album_number} · ${esc(a.name)}
+          </option>`
+        )
+        .join('');
+
+    move.onchange=()=>moveMedia(m.id,move.value);
+
+    actions.appendChild(move);
+
+    const del=document.createElement('button');
+
+    del.className='danger';
+    del.textContent='🗑 Apagar';
+
+    del.onclick=()=>deleteMedia(m);
+
+    actions.appendChild(del);
+
+  }else if(!m.preview_path){
+
+    const s=document.createElement('span');
+
+    s.className='muted';
+
+    s.textContent=
+      m.mime_type.startsWith('video/')
+        ?'Vídeo protegido — processamento na V6.3'
+        :'A aguardar pré-visualização protegida';
+
+    actions.appendChild(s);
+  }
+
+  meta.appendChild(actions);
+
+  card.append(media,meta);
+
+  $('gallery').appendChild(card);
+}
 async function moveMedia(id,albumId){if(!isAdmin||!albumId)return;const{error}=await supabase.from('media').update({album_id:albumId}).eq('id',id);if(error)alert(error.message);await loadMedia()}
 async function deleteMedia(m){if(!isAdmin||!confirm(`Apagar “${m.file_name}”?`))return;const paths=[m.original_path,m.preview_path].filter(Boolean);await supabase.storage.from('media').remove(paths);const{error}=await supabase.from('media').delete().eq('id',m.id);if(error)alert(error.message);await loadMedia()}
 async function uploadFiles(e){
